@@ -623,8 +623,8 @@ html, body {
 }
 .p6-cup-top {
   position: relative;
-  width: min(540px, 44vw);
-  height: min(540px, 44vw);
+  width: min(680px, 52vw);
+  height: min(680px, 52vw);
   background: url('assets/KaFeiBei1.png') center/contain no-repeat;
   filter: drop-shadow(0 30px 60px rgba(0,0,0,0.3));
 }
@@ -942,7 +942,8 @@ function makeP4Particle() {
     size: 0.6 + Math.random() * 2.6,
     speed: 0.6 + Math.random() * 1.4,
     color: COFFEE_COLORS[Math.floor(Math.random() * COFFEE_COLORS.length)],
-    alpha: 0.35 + Math.random() * 0.6,
+    baseAlpha: 0.45 + Math.random() * 0.55, // 基础不透明度
+    alpha: 0,
     rot: Math.random() * Math.PI * 2,
     rotSpeed: (Math.random() - 0.5) * 0.05,
     type: Math.random() < 0.75 ? 'dot' : 'flake',
@@ -951,13 +952,15 @@ function makeP4Particle() {
 
 function p4InitParticles() {
   p4Particles2 = [];
-  // 每条飘带分配一批粒子，密度大幅增加
-  const PER_RIBBON = 180;
+  // 左侧密度高，右侧密度低 —— 每条飘带的粒子在 x 上按指数分布
+  const PER_RIBBON = 220;
   for (let r = 0; r < RIBBON_COUNT; r++) {
     for (let i = 0; i < PER_RIBBON; i++) {
       const p = makeP4Particle();
       p.ribbonIdx = r;
-      p.x = Math.random() * p4W;
+      // 偏向左侧的分布：Math.random()^1.8 让多数粒子落在 0~0.5 区间
+      const xRatio = Math.pow(Math.random(), 1.8);
+      p.x = xRatio * p4W;
       const ribbon = p4Ribbons[r];
       p.y = ribbonY(ribbon, p.x) + (Math.random() - 0.5) * ribbon.thickness;
       p4Particles2.push(p);
@@ -995,6 +998,14 @@ function p4Tick() {
     p.vx *= 0.92;
     p.vy *= 0.88;
     p.rot += p.rotSpeed;
+
+    // 左密右疏的透明度：x < 30% 全显，30%~95% 渐隐，>95% 几乎透明
+    const xRatio = p.x / p4W;
+    let fade;
+    if (xRatio < 0.3) fade = 1;
+    else if (xRatio < 0.95) fade = 1 - (xRatio - 0.3) / 0.65;
+    else fade = 0;
+    p.alpha = p.baseAlpha * fade;
 
     p4Ctx.save();
     p4Ctx.globalAlpha = p.alpha;
