@@ -378,25 +378,17 @@ html, body {
 }
 .p2-right .headline-cn {
   color: #1a1410;
-  text-shadow:
-    0 2px 12px rgba(244,239,232,0.95),
-    0 0 4px rgba(244,239,232,1),
-    1px 1px 0 rgba(244,239,232,0.9);
 }
 .p2-right .headline-cn em {
   color: #c75a2a;
-  text-shadow:
-    0 2px 12px rgba(244,239,232,0.95),
-    0 0 4px rgba(244,239,232,1);
 }
 .p2-right .body-cn {
-  color: #1a1410;
+  color: rgba(244, 239, 232, 0.92);
   font-weight: 400;
-  text-shadow: 0 1px 6px rgba(244,239,232,0.9), 0 0 3px rgba(244,239,232,1);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.35);
 }
 .p2-right .divider {
-  background: #1a1410;
-  box-shadow: 0 0 8px rgba(244,239,232,0.9);
+  background: rgba(244, 239, 232, 0.7);
 }
 .p2-data {
   margin-top: 32px;
@@ -631,8 +623,8 @@ html, body {
 }
 .p6-cup-top {
   position: relative;
-  width: min(440px, 36vw);
-  height: min(440px, 36vw);
+  width: min(540px, 44vw);
+  height: min(540px, 44vw);
   background: url('assets/KaFeiBei1.png') center/contain no-repeat;
   filter: drop-shadow(0 30px 60px rgba(0,0,0,0.3));
 }
@@ -888,12 +880,15 @@ for (let i = 0; i < N; i++) {
   dotsBox.appendChild(dot);
 }
 
-// 生成研磨粒子（Canvas）
+// 生成研磨粒子（Canvas · 香飘带 + 鼠标排斥）
 const p4Canvas = document.getElementById('p4Canvas');
 const p4Ctx = p4Canvas.getContext('2d');
 let p4W = 0, p4H = 0;
 let p4Particles2 = [];
 let p4RAF = null;
+let p4Mouse = { x: -9999, y: -9999, active: false };
+const RIBBON_COUNT = 5; // 5 条香飘带
+let p4Ribbons = [];
 
 function p4Resize() {
   const dpr = window.devicePixelRatio || 1;
@@ -904,56 +899,101 @@ function p4Resize() {
   p4Canvas.height = p4H * dpr;
   p4Ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-window.addEventListener('resize', p4Resize);
-p4Resize();
+window.addEventListener('resize', () => { p4Resize(); p4InitRibbons(); });
 
 const COFFEE_COLORS = [
-  'rgba(74, 37, 21, 0.85)',   // 深棕
-  'rgba(107, 53, 32, 0.75)',  // 中棕
-  'rgba(138, 90, 58, 0.65)',  // 浅棕
-  'rgba(199, 90, 42, 0.55)',  // 焦糖
-  'rgba(42, 20, 8, 0.9)',     // 极深
+  'rgba(74, 37, 21, 0.85)',
+  'rgba(107, 53, 32, 0.75)',
+  'rgba(138, 90, 58, 0.65)',
+  'rgba(199, 90, 42, 0.55)',
+  'rgba(42, 20, 8, 0.9)',
 ];
 
+// 每条香飘带的中心轨迹（正弦曲线参数）
+function p4InitRibbons() {
+  p4Ribbons = [];
+  for (let i = 0; i < RIBBON_COUNT; i++) {
+    const baseY = p4H * (0.15 + (i + 0.5) / RIBBON_COUNT * 0.7);
+    p4Ribbons.push({
+      baseY,
+      amp: 30 + Math.random() * 60,
+      freq: 0.003 + Math.random() * 0.004,
+      phase: Math.random() * Math.PI * 2,
+      thickness: 35 + Math.random() * 25, // 飘带厚度（粒子在中线±范围内分布）
+    });
+  }
+}
+
+function ribbonY(ribbon, x) {
+  return ribbon.baseY + Math.sin(x * ribbon.freq + ribbon.phase) * ribbon.amp;
+}
+
 function makeP4Particle() {
-  // 从画面左侧随机高度入场
-  const startY = Math.random() * p4H;
-  const endY = startY + (Math.random() - 0.5) * p4H * 0.6;
+  const ribbonIdx = Math.floor(Math.random() * RIBBON_COUNT);
+  const ribbon = p4Ribbons[ribbonIdx];
+  const x = -20 - Math.random() * 200;
+  const offset = (Math.random() - 0.5) * ribbon.thickness;
   return {
-    x: -20 - Math.random() * 100,
-    y: startY,
-    targetY: endY,
-    size: 0.8 + Math.random() * 3.2,
-    speed: 0.3 + Math.random() * 1.6,
-    drift: (Math.random() - 0.5) * 0.6,        // 上下漂移幅度
-    waveFreq: 0.005 + Math.random() * 0.015,    // 波动频率
-    waveAmp: 8 + Math.random() * 30,            // 波动幅度
-    phase: Math.random() * Math.PI * 2,
+    x,
+    y: ribbonY(ribbon, x) + offset,
+    vx: 0, vy: 0,
+    offset,
+    ribbonIdx,
+    size: 0.6 + Math.random() * 2.6,
+    speed: 0.6 + Math.random() * 1.4,
     color: COFFEE_COLORS[Math.floor(Math.random() * COFFEE_COLORS.length)],
-    alpha: 0.3 + Math.random() * 0.7,
+    alpha: 0.35 + Math.random() * 0.6,
     rot: Math.random() * Math.PI * 2,
-    rotSpeed: (Math.random() - 0.5) * 0.04,
-    type: Math.random() < 0.7 ? 'dot' : 'flake', // 70% 圆点，30% 不规则碎屑
+    rotSpeed: (Math.random() - 0.5) * 0.05,
+    type: Math.random() < 0.75 ? 'dot' : 'flake',
   };
 }
 
 function p4InitParticles() {
   p4Particles2 = [];
-  // 初始分布一批，避免空白
-  for (let i = 0; i < 220; i++) {
-    const p = makeP4Particle();
-    p.x = Math.random() * p4W; // 散布在画面里
-    p4Particles2.push(p);
+  // 每条飘带分配一批粒子，密度大幅增加
+  const PER_RIBBON = 180;
+  for (let r = 0; r < RIBBON_COUNT; r++) {
+    for (let i = 0; i < PER_RIBBON; i++) {
+      const p = makeP4Particle();
+      p.ribbonIdx = r;
+      p.x = Math.random() * p4W;
+      const ribbon = p4Ribbons[r];
+      p.y = ribbonY(ribbon, p.x) + (Math.random() - 0.5) * ribbon.thickness;
+      p4Particles2.push(p);
+    }
   }
 }
 
 function p4Tick() {
   p4Ctx.clearRect(0, 0, p4W, p4H);
+  const REPEL_RADIUS = 100;
+  const REPEL_RADIUS_SQ = REPEL_RADIUS * REPEL_RADIUS;
+  const REPEL_FORCE = 1.2;
+
   for (let i = p4Particles2.length - 1; i >= 0; i--) {
     const p = p4Particles2[i];
-    p.x += p.speed;
-    // 正弦波动 + 随机漂移
-    p.y += p.drift + Math.sin(p.x * p.waveFreq + p.phase) * 0.3;
+    const ribbon = p4Ribbons[p.ribbonIdx];
+    // 沿飘带轨迹推进
+    p.x += p.speed + p.vx;
+    // 目标 Y = 飘带中线 + 自身偏移
+    const targetY = ribbonY(ribbon, p.x) + p.offset;
+    p.y += (targetY - p.y) * 0.08 + p.vy;
+    // 鼠标排斥
+    if (p4Mouse.active) {
+      const dx = p.x - p4Mouse.x;
+      const dy = p.y - p4Mouse.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < REPEL_RADIUS_SQ && distSq > 0.01) {
+        const dist = Math.sqrt(distSq);
+        const force = (1 - dist / REPEL_RADIUS) * REPEL_FORCE;
+        p.vx += (dx / dist) * force;
+        p.vy += (dy / dist) * force;
+      }
+    }
+    // 速度衰减（让粒子能回归飘带）
+    p.vx *= 0.92;
+    p.vy *= 0.88;
     p.rot += p.rotSpeed;
 
     p4Ctx.save();
@@ -966,27 +1006,49 @@ function p4Tick() {
       p4Ctx.arc(0, 0, p.size, 0, Math.PI * 2);
       p4Ctx.fill();
     } else {
-      // 不规则碎屑（小矩形）
       p4Ctx.fillRect(-p.size, -p.size * 0.6, p.size * 2, p.size * 1.2);
     }
     p4Ctx.restore();
 
-    // 出右边界 → 重置回左侧
-    if (p.x > p4W + 20) {
-      p4Particles2[i] = makeP4Particle();
+    if (p.x > p4W + 30) {
+      const np = makeP4Particle();
+      np.ribbonIdx = p.ribbonIdx;
+      const rb = p4Ribbons[p.ribbonIdx];
+      np.x = -20 - Math.random() * 100;
+      np.y = ribbonY(rb, np.x) + np.offset;
+      p4Particles2[i] = np;
     }
   }
   p4RAF = requestAnimationFrame(p4Tick);
 }
 
+// 鼠标位置追踪（仅 Ch4 active 时记录）
+p4Canvas.addEventListener('mousemove', (e) => {
+  const rect = p4Canvas.getBoundingClientRect();
+  p4Mouse.x = e.clientX - rect.left;
+  p4Mouse.y = e.clientY - rect.top;
+  p4Mouse.active = true;
+});
+// 用 document 监听 + 转换坐标，确保鼠标在文字上也能触发排斥
+document.addEventListener('mousemove', (e) => {
+  if (!p4RAF) return; // 仅 Ch4 运行时
+  const rect = p4Canvas.getBoundingClientRect();
+  p4Mouse.x = e.clientX - rect.left;
+  p4Mouse.y = e.clientY - rect.top;
+  p4Mouse.active = true;
+});
+document.addEventListener('mouseleave', () => { p4Mouse.active = false; });
+
 function p4Start() {
   p4Resize();
+  p4InitRibbons();
   p4InitParticles();
   if (p4RAF) cancelAnimationFrame(p4RAF);
   p4Tick();
 }
 function p4Stop() {
   if (p4RAF) { cancelAnimationFrame(p4RAF); p4RAF = null; }
+  p4Mouse.active = false;
 }
 
 function updateUI(idx) {
