@@ -1268,19 +1268,31 @@ const bgm = document.getElementById('bgm');
 const bgmToggle = document.getElementById('bgmToggle');
 bgm.volume = 0.3;
 
+bgm.addEventListener('error', (e) => {
+  console.error('[BGM] audio error:', bgm.error, e);
+});
+bgm.addEventListener('canplaythrough', () => {
+  console.log('[BGM] ready to play');
+});
+
 function bgmPlay() {
-  return bgm.play().then(() => {
-    bgmToggle.classList.add('playing');
-    bgmToggle.classList.remove('hint');
-  }).catch(() => {
-    // 自动播放被浏览器拦截 —— 等用户点击按钮
-  });
+  const p = bgm.play();
+  if (p && p.then) {
+    return p.then(() => {
+      console.log('[BGM] playing');
+      bgmToggle.classList.add('playing');
+      bgmToggle.classList.remove('hint');
+    }).catch((err) => {
+      console.warn('[BGM] play blocked:', err.name, err.message);
+    });
+  }
 }
 function bgmPause() {
   bgm.pause();
   bgmToggle.classList.remove('playing');
 }
-bgmToggle.addEventListener('click', () => {
+bgmToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (bgm.paused) bgmPlay();
   else bgmPause();
 });
@@ -1290,12 +1302,12 @@ function tryAutoPlay() {
   window.removeEventListener('wheel', tryAutoPlay);
   window.removeEventListener('keydown', tryAutoPlay);
   window.removeEventListener('touchstart', tryAutoPlay);
+  window.removeEventListener('click', tryAutoPlay);
 }
 window.addEventListener('wheel', tryAutoPlay, { once: true, passive: true });
 window.addEventListener('keydown', tryAutoPlay, { once: true });
 window.addEventListener('touchstart', tryAutoPlay, { once: true, passive: true });
-// 进入页面立即试一次（多数现代浏览器需要交互，但有的允许）
-bgmPlay();
+window.addEventListener('click', tryAutoPlay, { once: true });
 </script>
 </body>
 </html>
