@@ -139,6 +139,48 @@ html, body {
   text-transform: uppercase;
 }
 
+/* 背景音乐控制按钮 */
+.bgm-toggle {
+  position: fixed;
+  bottom: 80px;
+  right: 48px;
+  z-index: 101;
+  width: 36px; height: 36px;
+  border: 1px solid rgba(26,20,16,0.25);
+  border-radius: 50%;
+  background: rgba(244,239,232,0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  color: var(--ink);
+}
+.bgm-toggle:hover {
+  background: rgba(244,239,232,0.9);
+  transform: scale(1.08);
+}
+.bgm-toggle svg { width: 16px; height: 16px; }
+.bgm-toggle .icon-pause,
+.bgm-toggle .icon-play { display: none; }
+.bgm-toggle.playing .icon-pause { display: block; }
+.bgm-toggle:not(.playing) .icon-play { display: block; }
+/* 首次未交互时的呼吸提示 */
+.bgm-toggle.hint::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(199,90,42,0.6);
+  animation: bgmPulse 1.6s ease-out infinite;
+}
+@keyframes bgmPulse {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
 /* ===== 通用文字组件 ===== */
 .eyebrow {
   font-family: 'Bebas Neue', sans-serif;
@@ -729,6 +771,12 @@ html, body {
 <div class="chapter-tag"><span class="num" id="chNum">00</span> / 07</div>
 <div class="scroll-hint-bottom">SCROLL ↓ OR USE ARROWS</div>
 
+<audio id="bgm" src="assets/bgm.ogg" loop preload="auto"></audio>
+<button class="bgm-toggle hint" id="bgmToggle" aria-label="Toggle music">
+  <svg class="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+  <svg class="icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+</button>
+
 <div class="pagination" id="pagination"></div>
 
 <!-- 转场覆盖层 -->
@@ -1214,6 +1262,40 @@ window.addEventListener('touchend', (e) => {
 // 初始化第一页
 pages[0].classList.add('active');
 playEnter(0);
+
+/* —— 背景音乐 —— */
+const bgm = document.getElementById('bgm');
+const bgmToggle = document.getElementById('bgmToggle');
+bgm.volume = 0.3;
+
+function bgmPlay() {
+  return bgm.play().then(() => {
+    bgmToggle.classList.add('playing');
+    bgmToggle.classList.remove('hint');
+  }).catch(() => {
+    // 自动播放被浏览器拦截 —— 等用户点击按钮
+  });
+}
+function bgmPause() {
+  bgm.pause();
+  bgmToggle.classList.remove('playing');
+}
+bgmToggle.addEventListener('click', () => {
+  if (bgm.paused) bgmPlay();
+  else bgmPause();
+});
+// 第一次任意交互后尝试播放（绕过自动播放限制）
+function tryAutoPlay() {
+  bgmPlay();
+  window.removeEventListener('wheel', tryAutoPlay);
+  window.removeEventListener('keydown', tryAutoPlay);
+  window.removeEventListener('touchstart', tryAutoPlay);
+}
+window.addEventListener('wheel', tryAutoPlay, { once: true, passive: true });
+window.addEventListener('keydown', tryAutoPlay, { once: true });
+window.addEventListener('touchstart', tryAutoPlay, { once: true, passive: true });
+// 进入页面立即试一次（多数现代浏览器需要交互，但有的允许）
+bgmPlay();
 </script>
 </body>
 </html>
