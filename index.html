@@ -1267,19 +1267,16 @@ playEnter(0);
 const bgm = document.getElementById('bgm');
 const bgmToggle = document.getElementById('bgmToggle');
 bgm.volume = 0.3;
+bgm.load();
 
 bgm.addEventListener('error', (e) => {
   console.error('[BGM] audio error:', bgm.error, e);
-});
-bgm.addEventListener('canplaythrough', () => {
-  console.log('[BGM] ready to play');
 });
 
 function bgmPlay() {
   const p = bgm.play();
   if (p && p.then) {
     return p.then(() => {
-      console.log('[BGM] playing');
       bgmToggle.classList.add('playing');
       bgmToggle.classList.remove('hint');
     }).catch((err) => {
@@ -1296,18 +1293,18 @@ bgmToggle.addEventListener('click', (e) => {
   if (bgm.paused) bgmPlay();
   else bgmPause();
 });
-// 第一次任意交互后尝试播放（绕过自动播放限制）
+// 任意首次交互（含鼠标移动）触发播放，绕过自动播放限制
 function tryAutoPlay() {
   bgmPlay();
-  window.removeEventListener('wheel', tryAutoPlay);
-  window.removeEventListener('keydown', tryAutoPlay);
-  window.removeEventListener('touchstart', tryAutoPlay);
-  window.removeEventListener('click', tryAutoPlay);
+  ['wheel','keydown','touchstart','click','mousemove','pointerdown'].forEach(ev => {
+    window.removeEventListener(ev, tryAutoPlay);
+  });
 }
-window.addEventListener('wheel', tryAutoPlay, { once: true, passive: true });
-window.addEventListener('keydown', tryAutoPlay, { once: true });
-window.addEventListener('touchstart', tryAutoPlay, { once: true, passive: true });
-window.addEventListener('click', tryAutoPlay, { once: true });
+['wheel','keydown','touchstart','click','mousemove','pointerdown'].forEach(ev => {
+  window.addEventListener(ev, tryAutoPlay, { once: true, passive: true });
+});
+// 进页面立刻试一次
+bgmPlay();
 </script>
 </body>
 </html>
