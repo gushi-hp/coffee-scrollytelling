@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一颗咖啡豆的旅程 · The Journey of a Bean</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Bebas+Neue&family=Noto+Serif+SC:wght@300;400;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=Ma+Shan+Zheng&family=ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+<style>
+:root {
+  --bg: #f4efe8;
+  --bg-warm: #ebe2d4;
+  --bg-roast: #c89569;
+  --bg-deep: #8a5a3a;
+  --bg-cream: #f8f3ea;
+  --ink: #1a1410;
+  --ink-soft: #3a2e25;
+  --accent: #c75a2a;
+  --accent-deep: #8a3a18;
+  --line: #1a141033;
+  --glass: rgba(244, 239, 232, 0.6);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+}
+
+/* ===== 翻页容器 ===== */
+.deck {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  perspective: 1500px;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform-style: preserve-3d;
+  background: var(--bg);
+  overflow: hidden;
+}
+.page.active { opacity: 1; visibility: visible; }
+
+/* 网点纹理 */
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(26,20,16,0.04) 1px, transparent 1px);
+  background-size: 4px 4px;
+  pointer-events: none;
+  z-index: 1;
+}
+.page > * { position: relative; z-index: 2; }
+
+/* ===== 报头 / 进度 / 翻页指示 ===== */
+.masthead {
+  position: fixed;
+  top: 24px; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 48px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  pointer-events: none;
+  mix-blend-mode: difference;
+  filter: invert(1);
+}
+.masthead .logo {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 18px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pagination {
+  position: fixed;
+  right: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pagination .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  opacity: 0.3;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.pagination .dot.active {
+  background: var(--accent);
+  opacity: 1;
+  transform: scale(1.5);
+}
+
+.chapter-tag {
+  position: fixed;
+  bottom: 32px; left: 48px;
+  z-index: 100;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  color: var(--ink-soft);
+}
+.chapter-tag .num { color: var(--accent); font-size: 18px; }
+
+.scroll-hint-bottom {
+  position: fixed;
+  bottom: 32px; right: 48px;
+  z-index: 100;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+/* ===== 通用文字组件 ===== */
+.eyebrow {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.4em;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: inline-block;
+}
+.eyebrow::before { content: '— '; }
+.headline {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: clamp(56px, 9vw, 140px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.headline em { font-style: italic; font-weight: 400; color: var(--accent-deep); }
+.headline-cn {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: clamp(56px, 8vw, 120px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+.headline-cn em { font-style: normal; color: var(--accent-deep); }
+.body-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(18px, 1.5vw, 22px);
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 380px;
+}
+.body-cn {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 300;
+  font-size: clamp(15px, 1.1vw, 17px);
+  line-height: 1.9;
+  color: var(--ink-soft);
+  max-width: 360px;
+  letter-spacing: 0.05em;
+}
+.caption {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.divider { width: 60px; height: 1px; background: var(--ink); margin: 24px 0; }
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(26,20,16,0.08);
+  box-shadow: 0 30px 80px rgba(26,20,16,0.1);
+}
+
+/* ===== 转场用的覆盖层（每章共用） ===== */
+.transition-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+.curtain {
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: translateY(100%);
+}
+.flash {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-cream);
+  opacity: 0;
+}
+.coffee-pour {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, var(--bg-deep) 0%, var(--accent-deep) 100%);
+  transform: translateY(-100%);
+}
+.split-left, .split-right {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 50%;
+  background: var(--bg-warm);
+}
+.split-left { left: 0; transform: translateX(-100%); }
+.split-right { right: 0; transform: translateX(100%); }
+
+/* ============================== */
+/* ===== Page 0 · 封面          ===== */
+/* ============================== */
+.p0 {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: linear-gradient(135deg, #f4efe8 0%, #ebe2d4 100%);
+}
+.p0-tag {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.5em;
+  color: var(--accent);
+  margin-bottom: 32px;
+}
+.p0-en {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(28px, 3vw, 44px);
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+.p0-cn {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 900;
+  font-size: clamp(80px, 12vw, 180px);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  line-height: 1;
+}
+.p0-bean {
+  position: absolute;
+  width: 180px; height: 240px;
+  bottom: 14%;
+  left: 50%;
+  margin-left: -90px;
+  animation: floatBean 4s ease-in-out infinite;
+}
+@keyframes floatBean {
+  0%, 100% { transform: translateY(0) rotate(-8deg); }
+  50%      { transform: translateY(-20px) rotate(8deg); }
+}
+.p0-meta {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.5em;
+  color: var(--ink-soft);
+}
+
+/* 咖啡豆基础样式（多页复用，使用真图） */
+.bean-img {
+  background: url('assets/bean-hero.png') center/contain no-repeat;
+  filter: drop-shadow(0 30px 30px rgba(0,0,0,0.3));
+  position: relative;
+}
+
+/* ============================== */
+/* ===== Page 1 · 起源（豆子从天上砸下） ===== */
+/* ============================== */
+.p1 { display: flex; }
+.p1-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 80px;
+}
+.p1-right {
+  flex: 1;
+  position: relative;
+  background: var(--bg-warm);
+}
+.p1-bean {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 280px; height: 380px;
+  margin-left: -140px;
+  margin-top: -190px;
+}
+.p1-glass {
+  position: absolute;
+  bottom: 60px; left: 60px;
+  padding: 20px 28px;
+  border-radius: 4px;
+}
+.p1-glass .num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: var(--accent);
+  line-height: 1;
+}
+.p1-glass .label {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* ============================== */
+/* ===== Page 2 · 产地（地图风） ===== */
+/* ============================== */
+.p2 {
+  background:
+    linear-gradient(90deg, var(--bg-warm) 0%, rgba(235,226,212,0.85) 35%, rgba(235,226,212,0.2) 60%, transparent 100%),
+    url('assets/origin.jpg') center/cover no-repeat;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+.p2-left {
+  padding: 0 80px;
+}
+.p2-altitude {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.4em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.p2-right {
+  padding: 0 80px;
+  text-align: right;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.p2-right .headline-cn {
+  color: #1a1410;
+  text-shadow:
+    0 2px 12px rgba(244,239,232,0.95),
+    0 0 4px rgba(244,239,232,1),
+    1px 1px 0 rgba(244,239,232,0.9);
+}
+.p2-right .headline-cn em {
+  color: #c75a2a;
+  text-shadow:
+    0 2px 12px rgba(244,239,232,0.95),
+    0 0 4px rgba(244,239,232,1);
+}
+.p2-right .body-cn {
+  color: #1a1410;
+  font-weight: 400;
+  text-shadow: 0 1px 6px rgba(244,239,232,0.9), 0 0 3px rgba(244,239,232,1);
+}
+.p2-right .divider {
+  background: #1a1410;
+  box-shadow: 0 0 8px rgba(244,239,232,0.9);
+}
+.p2-data {
+  margin-top: 32px;
+  margin-left: auto;
+  width: 280px;
+  padding: 24px;
+  background: rgba(244,239,232,0.85);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+.p2-data .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+}
+.p2-data .row:last-child { border-bottom: none; }
+.p2-data .row .k { color: var(--ink-soft); letter-spacing: 0.15em; text-transform: uppercase; }
+.p2-data .row .v { color: var(--ink); font-weight: 600; }
+
+/* 山脉装饰 */
+.p2-mountain {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 30%;
+  opacity: 0.15;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--ink) 50%) no-repeat 0 0 / 50% 100%,
+    linear-gradient(225deg, transparent 50%, var(--ink) 50%) no-repeat 50% 0 / 50% 100%;
+}
+
+/* ============================== */
+/* ===== Page 3 · 烘焙（火焰背景） ===== */
+/* ============================== */
+.p3 {
+  background: radial-gradient(ellipse at center bottom, var(--bg-roast) 0%, var(--bg-deep) 80%, var(--ink) 100%);
+  color: var(--bg-cream);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 0 80px;
+}
+.p3 .eyebrow { color: #ffb380; }
+.p3 .headline { color: var(--bg-cream); }
+.p3 .headline em { color: #ffb380; }
+.p3 .body-cn { color: rgba(248,243,234,0.85); margin: 32px auto 0; max-width: 480px; }
+.p3-bean-row {
+  margin-top: 56px;
+  display: flex;
+  gap: 24px;
+}
+.p3-bean-row > div {
+  width: 50px; height: 70px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+.p3-bean-row > div:nth-child(1) { background: #c89569; box-shadow: inset -4px -8px 12px rgba(0,0,0,0.3); }
+.p3-bean-row > div:nth-child(2) { background: #a06438; box-shadow: inset -4px -8px 12px rgba(0,0,0,0.4); }
+.p3-bean-row > div:nth-child(3) { background: #6b3520; box-shadow: inset -4px -8px 12px rgba(0,0,0,0.5); }
+.p3-bean-row > div:nth-child(4) { background: #4a2515; box-shadow: inset -4px -8px 12px rgba(0,0,0,0.6); }
+.p3-bean-row > div:nth-child(5) { background: #2a1408; box-shadow: inset -4px -8px 12px rgba(0,0,0,0.7); }
+.p3-bean-row .label-row {
+  position: absolute;
+  bottom: -28px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(248,243,234,0.6);
+}
+.p3-bean-wrap {
+  position: relative;
+  margin-top: 56px;
+  display: flex;
+  gap: 32px;
+  align-items: flex-end;
+}
+.p3-bean-wrap > div {
+  position: relative;
+  width: 80px; height: 110px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 12px 16px rgba(0,0,0,0.4));
+}
+.p3-bean-wrap > div::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(248,243,234,0.6);
+  white-space: nowrap;
+}
+.p3-bean-wrap > div:nth-child(1) { background-image: url('assets/1.png'); }
+.p3-bean-wrap > div:nth-child(2) { background-image: url('assets/2.png'); }
+.p3-bean-wrap > div:nth-child(3) { background-image: url('assets/3.png'); }
+.p3-bean-wrap > div:nth-child(4) { background-image: url('assets/4.png'); }
+.p3-bean-wrap > div:nth-child(5) { background-image: url('assets/5.png'); }
+
+/* ============================== */
+/* ===== Page 4 · 研磨（巨数字） ===== */
+/* ============================== */
+.p4 {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: center;
+  background: var(--bg);
+}
+.p4-left {
+  padding-left: 80px;
+}
+.p4-num {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(180px, 26vw, 420px);
+  line-height: 0.85;
+  color: var(--accent);
+  letter-spacing: -0.05em;
+}
+.p4-unit {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.4em;
+  color: var(--ink-soft);
+  margin-top: -20px;
+}
+.p4-right {
+  padding: 0 80px 0 40px;
+  text-align: right;
+}
+/* 研磨粉末 Canvas 粒子层 */
+.p4-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.p4-particles canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ============================== */
+/* ===== Page 5 · 萃取（杯子+水流） ===== */
+/* ============================== */
+.p5 {
+  background:
+    linear-gradient(180deg, rgba(26,20,16,0.35) 0%, rgba(26,20,16,0.55) 50%, rgba(26,20,16,0.75) 100%),
+    url('assets/espresso.jpg') center/cover no-repeat;
+  color: var(--bg-cream);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 0 80px;
+}
+.p5 .eyebrow { color: #ffb380; }
+.p5 .p5-quote { color: var(--bg-cream); }
+.p5 .p5-quote em { color: #ffb380; }
+.p5 .p5-bottom { color: rgba(248,243,234,0.6); }
+.p5-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(32px, 4vw, 56px);
+  line-height: 1.4;
+  color: var(--ink);
+  max-width: 720px;
+  margin-top: 32px;
+}
+.p5-quote em { color: var(--accent-deep); font-weight: 500; }
+.p5-stream {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 30vh;
+  background: linear-gradient(to bottom, transparent 0%, var(--accent-deep) 30%, var(--ink) 100%);
+  border-radius: 0 0 4px 4px;
+  filter: blur(0.5px);
+}
+.p5-stream::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 18px; height: 18px;
+  margin-left: -9px;
+  background: var(--ink);
+  border-radius: 50%;
+  filter: blur(2px);
+  transform-origin: center top;
+  animation: drip 1.5s ease-in infinite;
+}
+@keyframes drip {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.75; }
+}
+.p5-bottom {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+/* ============================== */
+/* ===== Page 6 · 拉花（杯子俯视图） ===== */
+/* ============================== */
+.p6 {
+  background: linear-gradient(135deg, #ebe2d4 0%, #d9c8b0 100%);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+}
+.p6-left {
+  display: flex;
+  justify-content: center;
+}
+.p6-cup-top {
+  position: relative;
+  width: min(440px, 36vw);
+  height: min(440px, 36vw);
+  background: url('assets/KaFeiBei1.png') center/contain no-repeat;
+  filter: drop-shadow(0 30px 60px rgba(0,0,0,0.3));
+}
+.p6-right {
+  padding: 0 80px;
+  text-align: right;
+}
+.p6-glass-bottom {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, 70vw);
+  padding: 28px 40px;
+  text-align: center;
+  border-radius: 4px;
+}
+
+/* ============================== */
+/* ===== Page 7 · 收尾（杯子+热气） ===== */
+/* ============================== */
+.p7 {
+  background: linear-gradient(180deg, #f4efe8 0%, #ebe2d4 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.p7-cup {
+  position: relative;
+  width: 360px;
+  height: 360px;
+  margin-bottom: 60px;
+  background: url('assets/KaFeiBei2.png') center/contain no-repeat;
+  filter: drop-shadow(0 30px 50px rgba(0,0,0,0.3));
+}
+.p7-steam {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px; height: 100px;
+}
+.p7-steam span {
+  position: absolute;
+  bottom: 0;
+  width: 14px; height: 14px;
+  background: rgba(255,255,255,0.8);
+  border-radius: 50%;
+  filter: blur(8px);
+  animation: steam-rise 3s ease-in infinite;
+}
+.p7-steam span:nth-child(1) { left: 20%; animation-delay: 0s; }
+.p7-steam span:nth-child(2) { left: 50%; animation-delay: 0.6s; }
+.p7-steam span:nth-child(3) { left: 80%; animation-delay: 1.2s; }
+.p7-steam span:nth-child(4) { left: 35%; animation-delay: 1.8s; }
+.p7-steam span:nth-child(5) { left: 65%; animation-delay: 2.4s; }
+@keyframes steam-rise {
+  0%   { transform: translateY(0) scale(1);   opacity: 0; }
+  20%  { opacity: 0.7; }
+  100% { transform: translateY(-120px) scale(2.4); opacity: 0; }
+}
+.p7-end-cn {
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: clamp(72px, 10vw, 140px);
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.p7-end-en {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(20px, 2vw, 28px);
+  color: var(--ink-soft);
+}
+.p7-end-meta {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.5em;
+  color: var(--ink-soft);
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>VOL.01 · ISSUE 001</div>
+  <div class="logo">The Bean Journal</div>
+  <div>2026 · SPRING</div>
+</header>
+
+<div class="chapter-tag"><span class="num" id="chNum">00</span> / 07</div>
+<div class="scroll-hint-bottom">SCROLL ↓ OR USE ARROWS</div>
+
+<div class="pagination" id="pagination"></div>
+
+<!-- 转场覆盖层 -->
+<div class="transition-layer">
+  <div class="curtain" id="curtain"></div>
+  <div class="flash" id="flash"></div>
+  <div class="coffee-pour" id="coffeePour"></div>
+  <div class="split-left" id="splitLeft"></div>
+  <div class="split-right" id="splitRight"></div>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- Page 0 · 封面 -->
+  <section class="page p0" data-page="0">
+    <div class="p0-tag">A SCROLLYTELLING ESSAY</div>
+    <div class="p0-en">The Journey of a</div>
+    <div class="p0-cn">咖 啡 豆</div>
+    <div class="p0-bean bean-img"></div>
+    <div class="p0-meta">SCROLL TO BEGIN ↓</div>
+  </section>
+
+  <!-- Page 1 · 起源 -->
+  <section class="page p1" data-page="1">
+    <div class="p1-left">
+      <div class="eyebrow anim">CHAPTER ONE · 起源</div>
+      <div class="headline anim">From <em>above</em>,<br>it falls.</div>
+      <div class="divider anim"></div>
+      <div class="body-cn anim">一颗咖啡豆从枝头坠落。<br>它的旅程，由此开始。</div>
+    </div>
+    <div class="p1-right">
+      <div class="p1-bean bean-img" id="p1Bean"></div>
+      <div class="p1-glass glass anim">
+        <div class="num">01</div>
+        <div class="label">The First Drop</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 2 · 产地 -->
+  <section class="page p2" data-page="2">
+    <div class="p2-altitude anim">ALTITUDE · 1650M</div>
+    <div class="p2-left">
+      <div class="eyebrow anim">CHAPTER TWO · 产地</div>
+      <div class="headline anim" style="font-size:clamp(48px,7vw,110px)"><em>Highland</em><br>Born.</div>
+    </div>
+    <div class="p2-right">
+      <div class="headline-cn anim">来自<em>高原</em><br>的馈赠</div>
+      <div class="divider anim" style="margin-left:auto"></div>
+      <div class="body-cn anim" style="margin-left:auto">云雾的吻，时间的耐心，<br>共同抚养这颗小小的种子。</div>
+      <div class="p2-data glass anim">
+        <div class="row"><span class="k">Origin</span><span class="v">Yunnan, CN</span></div>
+        <div class="row"><span class="k">Altitude</span><span class="v">1,650 m</span></div>
+        <div class="row"><span class="k">Variety</span><span class="v">Catimor</span></div>
+        <div class="row"><span class="k">Process</span><span class="v">Washed</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 3 · 烘焙 -->
+  <section class="page p3" data-page="3">
+    <div class="eyebrow anim">CHAPTER THREE · 烘焙</div>
+    <div class="headline anim"><em>Fire</em> awakens<br>the soul.</div>
+    <div class="body-cn anim">在 200°C 的鼓风中，糖分焦化，油脂渗出，<br>沉睡的香气，在豆芯里苏醒。</div>
+    <div class="p3-bean-wrap anim">
+      <div data-label="GREEN"></div>
+      <div data-label="LIGHT"></div>
+      <div data-label="MEDIUM"></div>
+      <div data-label="DARK"></div>
+      <div data-label="FRENCH"></div>
+    </div>
+  </section>
+
+  <!-- Page 4 · 研磨 -->
+  <section class="page p4" data-page="4">
+    <div class="p4-left">
+      <div class="p4-num anim"><em>800</em></div>
+      <div class="p4-unit anim">MICROMETER · MEDIUM GRIND</div>
+    </div>
+    <div class="p4-right">
+      <div class="eyebrow anim">CHAPTER FOUR · 研磨</div>
+      <div class="headline-cn anim">化整<br>为<em>粉</em></div>
+      <div class="divider anim" style="margin-left:auto"></div>
+      <div class="body-cn anim" style="margin-left:auto">研磨度决定萃取速率。<br>太粗，水流过而无味；<br>太细，苦涩淹没甘甜。</div>
+    </div>
+    <div class="p4-particles" id="p4Particles">
+      <canvas id="p4Canvas"></canvas>
+    </div>
+  </section>
+
+  <!-- Page 5 · 萃取 -->
+  <section class="page p5" data-page="5">
+    <div class="eyebrow anim" style="margin-top:30vh">CHAPTER FIVE · 萃取</div>
+    <div class="p5-quote anim">
+      <em>9 bar</em> of pressure,<br>
+      <em>25 seconds</em> of patience,<br>
+      a single golden stream.
+    </div>
+    <div class="p5-bottom caption anim">— THE GOLDEN RATIO —</div>
+  </section>
+
+  <!-- Page 6 · 拉花 -->
+  <section class="page p6" data-page="6">
+    <div class="p6-left">
+      <div class="p6-cup-top anim"></div>
+    </div>
+    <div class="p6-right">
+      <div class="eyebrow anim">CHAPTER SIX · 拉花</div>
+      <div class="headline-cn anim">奶白与<br><em>咖褐</em>的相遇</div>
+      <div class="divider anim" style="margin-left:auto"></div>
+      <div class="body-cn anim" style="margin-left:auto">一颗心、一朵郁金香、一片莲花。<br>每一杯，都是转瞬即逝的画。</div>
+    </div>
+    <div class="p6-glass-bottom glass anim">
+      <div class="caption" style="margin-bottom:10px">— THE ART OF THE POUR —</div>
+      <div class="body-text" style="max-width:none;font-size:clamp(20px,1.8vw,26px)">
+        A heart, a tulip, a rosetta. Each cup is a fleeting painting.
+      </div>
+    </div>
+  </section>
+
+  <!-- Page 7 · 收尾 -->
+  <section class="page p7" data-page="7">
+    <div class="p7-cup anim">
+      <div class="p7-steam">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="p7-end-cn anim">请慢用</div>
+    <div class="p7-end-en anim">— Enjoy your cup —</div>
+    <div class="p7-end-meta">FIN · 2026 · THE BEAN JOURNAL</div>
+  </section>
+
+</div>
+
+<script>
+const pages = document.querySelectorAll('.page');
+const N = pages.length;
+const dotsBox = document.getElementById('pagination');
+const chNumEl = document.getElementById('chNum');
+const curtain = document.getElementById('curtain');
+const flash = document.getElementById('flash');
+const coffeePour = document.getElementById('coffeePour');
+const splitLeft = document.getElementById('splitLeft');
+const splitRight = document.getElementById('splitRight');
+
+let current = 0;
+let transitioning = false;
+
+// 生成分页点
+for (let i = 0; i < N; i++) {
+  const dot = document.createElement('div');
+  dot.className = 'dot' + (i === 0 ? ' active' : '');
+  dot.addEventListener('click', () => goTo(i));
+  dotsBox.appendChild(dot);
+}
+
+// 生成研磨粒子（Canvas）
+const p4Canvas = document.getElementById('p4Canvas');
+const p4Ctx = p4Canvas.getContext('2d');
+let p4W = 0, p4H = 0;
+let p4Particles2 = [];
+let p4RAF = null;
+
+function p4Resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = p4Canvas.getBoundingClientRect();
+  p4W = rect.width;
+  p4H = rect.height;
+  p4Canvas.width = p4W * dpr;
+  p4Canvas.height = p4H * dpr;
+  p4Ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', p4Resize);
+p4Resize();
+
+const COFFEE_COLORS = [
+  'rgba(74, 37, 21, 0.85)',   // 深棕
+  'rgba(107, 53, 32, 0.75)',  // 中棕
+  'rgba(138, 90, 58, 0.65)',  // 浅棕
+  'rgba(199, 90, 42, 0.55)',  // 焦糖
+  'rgba(42, 20, 8, 0.9)',     // 极深
+];
+
+function makeP4Particle() {
+  // 从画面左侧随机高度入场
+  const startY = Math.random() * p4H;
+  const endY = startY + (Math.random() - 0.5) * p4H * 0.6;
+  return {
+    x: -20 - Math.random() * 100,
+    y: startY,
+    targetY: endY,
+    size: 0.8 + Math.random() * 3.2,
+    speed: 0.3 + Math.random() * 1.6,
+    drift: (Math.random() - 0.5) * 0.6,        // 上下漂移幅度
+    waveFreq: 0.005 + Math.random() * 0.015,    // 波动频率
+    waveAmp: 8 + Math.random() * 30,            // 波动幅度
+    phase: Math.random() * Math.PI * 2,
+    color: COFFEE_COLORS[Math.floor(Math.random() * COFFEE_COLORS.length)],
+    alpha: 0.3 + Math.random() * 0.7,
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.04,
+    type: Math.random() < 0.7 ? 'dot' : 'flake', // 70% 圆点，30% 不规则碎屑
+  };
+}
+
+function p4InitParticles() {
+  p4Particles2 = [];
+  // 初始分布一批，避免空白
+  for (let i = 0; i < 220; i++) {
+    const p = makeP4Particle();
+    p.x = Math.random() * p4W; // 散布在画面里
+    p4Particles2.push(p);
+  }
+}
+
+function p4Tick() {
+  p4Ctx.clearRect(0, 0, p4W, p4H);
+  for (let i = p4Particles2.length - 1; i >= 0; i--) {
+    const p = p4Particles2[i];
+    p.x += p.speed;
+    // 正弦波动 + 随机漂移
+    p.y += p.drift + Math.sin(p.x * p.waveFreq + p.phase) * 0.3;
+    p.rot += p.rotSpeed;
+
+    p4Ctx.save();
+    p4Ctx.globalAlpha = p.alpha;
+    p4Ctx.fillStyle = p.color;
+    p4Ctx.translate(p.x, p.y);
+    p4Ctx.rotate(p.rot);
+    if (p.type === 'dot') {
+      p4Ctx.beginPath();
+      p4Ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+      p4Ctx.fill();
+    } else {
+      // 不规则碎屑（小矩形）
+      p4Ctx.fillRect(-p.size, -p.size * 0.6, p.size * 2, p.size * 1.2);
+    }
+    p4Ctx.restore();
+
+    // 出右边界 → 重置回左侧
+    if (p.x > p4W + 20) {
+      p4Particles2[i] = makeP4Particle();
+    }
+  }
+  p4RAF = requestAnimationFrame(p4Tick);
+}
+
+function p4Start() {
+  p4Resize();
+  p4InitParticles();
+  if (p4RAF) cancelAnimationFrame(p4RAF);
+  p4Tick();
+}
+function p4Stop() {
+  if (p4RAF) { cancelAnimationFrame(p4RAF); p4RAF = null; }
+}
+
+function updateUI(idx) {
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  chNumEl.textContent = String(idx).padStart(2, '0');
+}
+
+/* —— 每章入场动画 —— */
+function playEnter(idx) {
+  const page = pages[idx];
+  const animEls = page.querySelectorAll('.anim');
+  gsap.fromTo(animEls,
+    { opacity: 0, y: 40 },
+    { opacity: 1, y: 0, duration: 0.8, stagger: 0.08, ease: 'power3.out', delay: 0.1 }
+  );
+
+  // 章节专属动画
+  if (idx === 0) {
+    // 封面：豆子浮起来已经是 CSS 循环
+  }
+  if (idx === 1) {
+    // 起源：豆子从天上砸下 + 自旋
+    const bean = page.querySelector('#p1Bean');
+    gsap.fromTo(bean,
+      { y: '-120vh', rotation: -720, scale: 0.6 },
+      { y: 0, rotation: 0, scale: 1, duration: 1.4, ease: 'bounce.out' }
+    );
+  }
+  if (idx === 3) {
+    // 烘焙：5 颗豆子依次"烘"成深色
+    const beans = page.querySelectorAll('.p3-bean-wrap > div');
+    gsap.fromTo(beans,
+      { scale: 0.3, opacity: 0, y: 30 },
+      { scale: 1, opacity: 1, y: 0, duration: 0.6, stagger: 0.18, ease: 'back.out(1.7)', delay: 0.3 }
+    );
+  }
+  if (idx === 4) {
+    // 研磨：启动 Canvas 粒子飘动
+    p4Start();
+  } else {
+    p4Stop();
+  }
+  if (idx === 5) {
+    // 萃取：背景图淡入即可，文字交给 .anim
+  }
+  if (idx === 6) {
+    // 拉花：杯子俯视图旋转入场
+    const cup = page.querySelector('.p6-cup-top');
+    gsap.fromTo(cup,
+      { scale: 0.5, rotation: -180, opacity: 0 },
+      { scale: 1, rotation: 0, opacity: 1, duration: 1.2, ease: 'power3.out' }
+    );
+  }
+}
+
+/* —— 转场效果池：根据下一章索引选不同的转场 —— */
+function playTransition(toIdx, dir, done) {
+  // 不同目标章节配不同转场
+  const transitionMap = {
+    1: 'curtainUp',     // 进章节1：黑幕从下拉起
+    2: 'splitOpen',     // 进章节2：左右分裂打开
+    3: 'coffeePour',    // 进章节3：咖啡液从顶部灌下（呼应烘焙变深）
+    4: 'flashCut',      // 进章节4：白闪
+    5: 'curtainUp',     // 进章节5：黑幕
+    6: 'splitOpen',     // 进章节6：左右分裂
+    7: 'coffeePour',    // 进章节7：咖啡液
+  };
+  const type = transitionMap[toIdx] || 'flashCut';
+
+  if (type === 'curtainUp') {
+    gsap.timeline({ onComplete: done })
+      .set(curtain, { y: '100%' })
+      .to(curtain, { y: '0%', duration: 0.5, ease: 'power3.in' })
+      .add(() => switchPage(toIdx))
+      .to(curtain, { y: '-100%', duration: 0.6, ease: 'power3.out' }, '+=0.05');
+  } else if (type === 'splitOpen') {
+    gsap.timeline({ onComplete: done })
+      .set([splitLeft, splitRight], { x: (i) => i === 0 ? '-100%' : '100%' })
+      .to(splitLeft, { x: '0%', duration: 0.45, ease: 'power3.in' }, 0)
+      .to(splitRight, { x: '0%', duration: 0.45, ease: 'power3.in' }, 0)
+      .add(() => switchPage(toIdx))
+      .to(splitLeft, { x: '-100%', duration: 0.55, ease: 'power3.out' }, '+=0.05')
+      .to(splitRight, { x: '100%', duration: 0.55, ease: 'power3.out' }, '<');
+  } else if (type === 'coffeePour') {
+    gsap.timeline({ onComplete: done })
+      .set(coffeePour, { y: '-100%' })
+      .to(coffeePour, { y: '0%', duration: 0.6, ease: 'power3.in' })
+      .add(() => switchPage(toIdx))
+      .to(coffeePour, { y: '100%', duration: 0.7, ease: 'power3.out' }, '+=0.05');
+  } else { // flashCut
+    gsap.timeline({ onComplete: done })
+      .set(flash, { opacity: 0 })
+      .to(flash, { opacity: 1, duration: 0.18, ease: 'power2.in' })
+      .add(() => switchPage(toIdx))
+      .to(flash, { opacity: 0, duration: 0.4, ease: 'power2.out' });
+  }
+}
+
+function switchPage(idx) {
+  pages[current].classList.remove('active');
+  pages[idx].classList.add('active');
+  current = idx;
+  updateUI(idx);
+  playEnter(idx);
+}
+
+function goTo(idx) {
+  if (transitioning || idx === current || idx < 0 || idx >= N) return;
+  transitioning = true;
+  const dir = idx > current ? 1 : -1;
+  playTransition(idx, dir, () => {
+    transitioning = false;
+  });
+}
+
+/* —— 输入：滚轮、键盘、触屏 —— */
+let wheelLock = false;
+window.addEventListener('wheel', (e) => {
+  if (transitioning || wheelLock) return;
+  wheelLock = true;
+  setTimeout(() => wheelLock = false, 900);
+  if (e.deltaY > 30) goTo(current + 1);
+  else if (e.deltaY < -30) goTo(current - 1);
+}, { passive: true });
+
+window.addEventListener('keydown', (e) => {
+  if (transitioning) return;
+  if (['ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); goTo(current + 1); }
+  if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); goTo(current - 1); }
+});
+
+let touchStartY = 0;
+window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; });
+window.addEventListener('touchend', (e) => {
+  if (transitioning) return;
+  const dy = touchStartY - e.changedTouches[0].clientY;
+  if (Math.abs(dy) < 40) return;
+  if (dy > 0) goTo(current + 1);
+  else goTo(current - 1);
+});
+
+// 初始化第一页
+pages[0].classList.add('active');
+playEnter(0);
+</script>
+</body>
+</html>
